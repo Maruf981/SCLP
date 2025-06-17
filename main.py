@@ -6,11 +6,12 @@ import pandas as pd
 from telegram import Bot
 import traceback
 from datetime import datetime, timedelta
+from collections import defaultdict
 
 app = Flask(__name__)
 
 TOKEN = '8127035277:AAGTYZB_0IfIiSCnjL4bUD0KeOIerSWg-eg'
-CHAT_ID = '443841357'
+CHAT_ID = '6715517491'
 bot = Bot(token=TOKEN)
 
 COINS = [
@@ -18,6 +19,12 @@ COINS = [
     'TRUMPUSDT', 'WIFUSDT', 'DOGEUSDT', 'FLOKIUSDT', 'BONKUSDT'
 ]
 TIMEFRAMES = ['1m', '5m', '15m']
+
+# Счетчики для статистики
+strong_signals = 0
+simple_signals = 0
+signals_per_coin = defaultdict(int)
+last_stat_time = datetime.utcnow()
 
 @app.route('/')
 def home():
@@ -63,6 +70,7 @@ def is_bearish_engulfing(df):
     )
 
 def check_signals():
+    global strong_signals, simple_signals, signals_per_coin, last_stat_time
     last_signal_time = datetime.utcnow()
     signals_found = False
 
@@ -87,6 +95,9 @@ def check_signals():
                         )
                         signals_found = True
                         signals_this_round = True
+                        strong_signals += 1
+                        signals_per_coin[symbol] += 1
+                        print(f"СИЛЬНЫЙ BUY сигнал: {symbol} ({tf}), RSI={rsi:.2f}")
 
                     elif is_bearish_engulfing(df) and rsi > 60:
                         bot.send_message(chat_id=CHAT_ID,
@@ -94,6 +105,9 @@ def check_signals():
                         )
                         signals_found = True
                         signals_this_round = True
+                        strong_signals += 1
+                        signals_per_coin[symbol] += 1
+                        print(f"СИЛЬНЫЙ SELL сигнал: {symbol} ({tf}), RSI={rsi:.2f}")
 
                     # Сигнал только по RSI
                     elif rsi < 30:
@@ -102,6 +116,9 @@ def check_signals():
                         )
                         signals_found = True
                         signals_this_round = True
+                        simple_signals += 1
+                        signals_per_coin[symbol] += 1
+                        print(f"BUY сигнал по RSI: {symbol} ({tf}), RSI={rsi:.2f}")
 
                     elif rsi > 70:
                         bot.send_message(chat_id=CHAT_ID,
@@ -109,12 +126,16 @@ def check_signals():
                         )
                         signals_found = True
                         signals_this_round = True
+                        simple_signals += 1
+                        signals_per_coin[symbol] += 1
+                        print(f"SELL сигнал по RSI: {symbol} ({tf}), RSI={rsi:.2f}")
 
                 except Exception as e:
                     print(f"Ошибка для {symbol} {tf}: {e}")
                     traceback.print_exc()
 
         now = datetime.utcnow()
+        # Раз в час сообщение что нет сигналов
         if (now - last_signal_time > timedelta(hours=1)):
             if not signals_found:
                 try:
@@ -128,6 +149,27 @@ def check_signals():
                     traceback.print_exc()
             last_signal_time = now
             signals_found = False  # Сбросить для следующего часа
+
+        # Раз в сутки — статистика
+        if (now - last_stat_time > timedelta(days=1)):
+            try:
+                coin_stats = '\n'.join([f'{coin}: {count}' for coin, count in sorted(signals_per_coin.items(), key=lambda x: -x[1])])
+                stat_text = (
+                    f"📊 Статистика за сутки:\n"
+                    f"Сильных сигналов: {strong_signals}\n"
+                    f"Обычных сигналов (только RSI): {simple_signals}\n"
+                    f"По монетам:\n{coin_stats if coin_stats else 'Нет сигналов'}"
+                )
+                bot.send_message(chat_id=CHAT_ID, text=stat_text)
+                print("Статистика за сутки отправлена")
+            except Exception as e:
+                print(f"Ошибка при отправке статистики: {e}")
+                traceback.print_exc()
+            # Сбросить статистику
+            strong_signals = 0
+            simple_signals = 0
+            signals_per_coin = defaultdict(int)
+            last_stat_time = now
 
         time.sleep(300)
 
