@@ -6,24 +6,29 @@ import pandas as pd
 import logging
 from telegram import Bot
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
 import os
 
-# 🔐 Загрузка из .env
-load_dotenv()
+# ✅ Получение токена из переменных окружения (на Render задаются вручную)
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 bot = Bot(token=TOKEN)
 app = Flask(__name__)
 
-# 🪵 Логирование
-logging.basicConfig(filename='bot.log', level=logging.INFO, format='%(asctime)s — %(levelname)s — %(message)s')
+# ✅ Лог в файл и консоль
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s — %(levelname)s — %(message)s',
+    handlers=[
+        logging.FileHandler('bot.log'),
+        logging.StreamHandler()
+    ]
+)
 
 COINS = ['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT','PEPEUSDT','TRUMPUSDT','WIFUSDT','DOGEUSDT','FLOKIUSDT','BONKUSDT']
 TIMEFRAMES = ['1m', '5m', '15m']
 
-last_signals = {}  # {symbol_tf: timestamp}
+last_signals = {}
 last_check_time = datetime.utcnow()
 signals_found = False
 
@@ -44,13 +49,14 @@ def get_klines(symbol, interval, limit=100):
         url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
         response = requests.get(url, timeout=10)
         data = response.json()
+        logging.info(f"📊 {symbol} {interval}: {len(data)} свечей, статус: {response.status_code}")
         df = pd.DataFrame(data, columns=[
             'time','o','h','l','c','v','x','q','n','taker_base_vol','taker_quote_vol','ignore'
         ])
         df = df.astype({'o': float, 'h': float, 'l': float, 'c': float})
         return df
     except Exception as e:
-        logging.error(f"Ошибка загрузки данных {symbol} {interval}: {e}")
+        logging.error(f"❌ Ошибка загрузки данных {symbol} {interval}: {e}")
         return pd.DataFrame()
 
 def calculate_rsi(df, period=14):
@@ -91,7 +97,8 @@ def check_signals():
             for tf in TIMEFRAMES:
                 try:
                     df = get_klines(symbol, tf)
-                    if df is None or len(df) < 20:
+                    if df.empty or len(df) < 20:
+                        logging.info(f"⚠️ Недостаточно данных для {symbol} {tf} (менее 20 строк)")
                         continue
 
                     rsi_series = calculate_rsi(df)
@@ -101,31 +108,26 @@ def check_signals():
                     rsi = rsi_series.iloc[-1]
                     key = f"{symbol}_{tf}"
 
-                    # Паттерны
                     bull = is_bullish_engulfing(df)
                     bear = is_bearish_engulfing(df)
 
-                    # 🔍 Генерация сигналов (но только если они новые)
                     if bull and rsi < 40:
                         if last_signals.get(key) != 'BUY':
                             bot.send_message(chat_id=CHAT_ID,
-                                text=f'✅ Сильный BUY сигнал: {symbol} ({tf})\nRSI = {rsi:.2f}\nПаттерн: бычье поглощение'
-                            )
+                                text=f'✅ Сильный BUY сигнал: {symbol} ({tf})\nRSI = {rsi:.2f}\nПаттерн: бычье поглощение')
                             last_signals[key] = 'BUY'
                             signals_found = True
 
                     elif bear and rsi > 60:
                         if last_signals.get(key) != 'SELL':
                             bot.send_message(chat_id=CHAT_ID,
-                                text=f'✅ Сильный SELL сигнал: {symbol} ({tf})\nRSI = {rsi:.2f}\nПаттерн: медвежье поглощение'
-                            )
+                                text=f'✅ Сильный SELL сигнал: {symbol} ({tf})\nRSI = {rsi:.2f}\nПаттерн: медвежье поглощение')
                             last_signals[key] = 'SELL'
                             signals_found = True
 
                 except Exception as e:
                     logging.error(f"❌ Ошибка при анализе {symbol} {tf}: {e}")
 
-        # ⏰ Сообщение "нет сигналов" раз в час
         now = datetime.utcnow()
         if now - last_check_time > timedelta(hours=1):
             if not signals_found:
@@ -136,11 +138,9 @@ def check_signals():
                     logging.error(f"Ошибка при отправке сообщения об отсутствии сигналов: {e}")
             last_check_time = now
 
-        time.sleep(300)  # 5 минут
+        time.sleep(300)
 
-# ▶️ Поток
 threading.Thread(target=check_signals, daemon=True).start()
 
-# 🚀 Flask
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
