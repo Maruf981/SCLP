@@ -6,16 +6,14 @@ import pandas as pd
 import logging
 from telegram import Bot
 from datetime import datetime, timedelta
-import os
 
-# ✅ Только переменные окружения, никаких .env
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+# ✅ Просто вставь сюда свои данные
+TOKEN = '8127035277:AAGTYZB_0IfIiSCnjL4bUD0KeOIerSWg-eg'
+CHAT_ID = '6715517491'
 
 bot = Bot(token=TOKEN)
 app = Flask(__name__)
 
-# ✅ Лог
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s — %(levelname)s — %(message)s',
@@ -25,7 +23,7 @@ logging.basicConfig(
     ]
 )
 
-COINS = ['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT','PEPEUSDT','TRUMPUSDT','WIFUSDT','DOGEUSDT','FLOKIUSDT','BONKUSDT']
+COINS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'PEPEUSDT', 'TRUMPUSDT', 'WIFUSDT', 'DOGEUSDT', 'FLOKIUSDT', 'BONKUSDT']
 TIMEFRAMES = ['1m', '5m', '15m']
 last_signals = {}
 last_check_time = datetime.utcnow()
@@ -50,7 +48,7 @@ def get_klines(symbol, interval, limit=100):
         data = response.json()
         logging.info(f"📊 {symbol} {interval}: {len(data)} свечей, статус: {response.status_code}")
         df = pd.DataFrame(data, columns=[
-            'time','o','h','l','c','v','x','q','n','taker_base_vol','taker_quote_vol','ignore'
+            'time', 'o', 'h', 'l', 'c', 'v', 'x', 'q', 'n', 'taker_base_vol', 'taker_quote_vol', 'ignore'
         ])
         df = df.astype({'o': float, 'h': float, 'l': float, 'c': float})
         return df
