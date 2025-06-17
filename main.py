@@ -8,14 +8,14 @@ from telegram import Bot
 from datetime import datetime, timedelta
 import os
 
-# ✅ Получение токена из переменных окружения (на Render задаются вручную)
+# ✅ Только переменные окружения, никаких .env
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 bot = Bot(token=TOKEN)
 app = Flask(__name__)
 
-# ✅ Лог в файл и консоль
+# ✅ Лог
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s — %(levelname)s — %(message)s',
@@ -27,7 +27,6 @@ logging.basicConfig(
 
 COINS = ['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT','PEPEUSDT','TRUMPUSDT','WIFUSDT','DOGEUSDT','FLOKIUSDT','BONKUSDT']
 TIMEFRAMES = ['1m', '5m', '15m']
-
 last_signals = {}
 last_check_time = datetime.utcnow()
 signals_found = False
