@@ -7,9 +7,12 @@ import logging
 from telegram import Bot
 from datetime import datetime, timedelta
 
-# ✅ Просто вставь сюда свои данные
+# ВСТАВЬ СВОЙ ТОКЕН и CHAT_ID ВМЕСТО ЭТИХ!
 TOKEN = '8127035277:AAGTYZB_0IfIiSCnjL4bUD0KeOIerSWg-eg'
 CHAT_ID = '6715517491'
+
+print('TOKEN:', TOKEN)
+print('CHAT_ID:', CHAT_ID)
 
 bot = Bot(token=TOKEN)
 app = Flask(__name__)
@@ -23,7 +26,10 @@ logging.basicConfig(
     ]
 )
 
-COINS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'PEPEUSDT', 'TRUMPUSDT', 'WIFUSDT', 'DOGEUSDT', 'FLOKIUSDT', 'BONKUSDT']
+COINS = [
+    'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'PEPEUSDT',
+    'TRUMPUSDT', 'WIFUSDT', 'DOGEUSDT', 'FLOKIUSDT', 'BONKUSDT'
+]
 TIMEFRAMES = ['1m', '5m', '15m']
 last_signals = {}
 last_check_time = datetime.utcnow()
@@ -48,7 +54,8 @@ def get_klines(symbol, interval, limit=100):
         data = response.json()
         logging.info(f"📊 {symbol} {interval}: {len(data)} свечей, статус: {response.status_code}")
         df = pd.DataFrame(data, columns=[
-            'time', 'o', 'h', 'l', 'c', 'v', 'x', 'q', 'n', 'taker_base_vol', 'taker_quote_vol', 'ignore'
+            'time', 'o', 'h', 'l', 'c', 'v', 'x', 'q', 'n',
+            'taker_base_vol', 'taker_quote_vol', 'ignore'
         ])
         df = df.astype({'o': float, 'h': float, 'l': float, 'c': float})
         return df
@@ -110,15 +117,19 @@ def check_signals():
 
                     if bull and rsi < 40:
                         if last_signals.get(key) != 'BUY':
-                            bot.send_message(chat_id=CHAT_ID,
-                                text=f'✅ Сильный BUY сигнал: {symbol} ({tf})\nRSI = {rsi:.2f}\nПаттерн: бычье поглощение')
+                            bot.send_message(
+                                chat_id=CHAT_ID,
+                                text=f'✅ Сильный BUY сигнал: {symbol} ({tf})\nRSI = {rsi:.2f}\nПаттерн: бычье поглощение'
+                            )
                             last_signals[key] = 'BUY'
                             signals_found = True
 
                     elif bear and rsi > 60:
                         if last_signals.get(key) != 'SELL':
-                            bot.send_message(chat_id=CHAT_ID,
-                                text=f'✅ Сильный SELL сигнал: {symbol} ({tf})\nRSI = {rsi:.2f}\nПаттерн: медвежье поглощение')
+                            bot.send_message(
+                                chat_id=CHAT_ID,
+                                text=f'✅ Сильный SELL сигнал: {symbol} ({tf})\nRSI = {rsi:.2f}\nПаттерн: медвежье поглощение'
+                            )
                             last_signals[key] = 'SELL'
                             signals_found = True
 
