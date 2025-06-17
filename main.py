@@ -12,7 +12,7 @@ TOKEN = '8127035277:AAGTYZB_0IfIiSCnjL4bUD0KeOIerSWg-eg'
 CHAT_ID = '6715517491'
 bot = Bot(token=TOKEN)
 
-# 🪙 Список монет и таймфреймов
+# 🪙 Монеты и таймфреймы
 COINS = [
     'BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT','PEPEUSDT',
     'TRUMPUSDT','WIFUSDT','DOGEUSDT','FLOKIUSDT','BONKUSDT'
@@ -26,7 +26,7 @@ def home():
 @app.route('/test')
 def test():
     try:
-        bot.send_message(chat_id=CHAT_ID, text='✅ Тестовое сообщение от бота работает!')
+        bot.send_message(chat_id=CHAT_ID, text='✅ Тестовое сообщение от бота!')
         return 'Сообщение отправлено!'
     except Exception as e:
         return f'❌ Ошибка при отправке: {e}'
@@ -45,7 +45,7 @@ def get_klines(symbol, interval, limit=100):
         df['o'] = df['o'].astype(float)
         return df
     except Exception as e:
-        print(f"❌ Ошибка получения данных {symbol} {interval}: {e}")
+        print(f"❌ Ошибка загрузки данных {symbol} {interval}: {e}")
         return pd.DataFrame()
 
 def calculate_rsi(df, period=14):
@@ -81,42 +81,46 @@ def check_signals():
                 try:
                     df = get_klines(symbol, tf)
 
-                    # 🛡️ Защита от пустых или коротких данных
+                    # 🛡️ Проверка на пустые или короткие данные
                     if df is None or len(df) < 20:
-                        print(f"⚠️ Недостаточно данных для {symbol} {tf}")
+                        print(f"⚠️ Недостаточно данных для {symbol} {tf} (менее 20 строк)")
+                        continue
+
+                    if len(df) < 2:
+                        print(f"⚠️ Недостаточно свечей для паттерна {symbol} {tf}")
                         continue
 
                     rsi = calculate_rsi(df).iloc[-1]
 
-                    # 🔵 BUY паттерн
+                    # 🔵 Только паттерн BUY
                     if is_bullish_engulfing(df):
                         try:
                             bot.send_message(chat_id=CHAT_ID, text=f'🟢 BUY паттерн: {symbol} ({tf})\nПаттерн: бычье поглощение')
                         except Exception as e:
                             print(f"❌ Ошибка при отправке BUY паттерна: {e}")
 
-                    # 🔴 SELL паттерн
+                    # 🔴 Только паттерн SELL
                     if is_bearish_engulfing(df):
                         try:
                             bot.send_message(chat_id=CHAT_ID, text=f'🔴 SELL паттерн: {symbol} ({tf})\nПаттерн: медвежье поглощение')
                         except Exception as e:
                             print(f"❌ Ошибка при отправке SELL паттерна: {e}")
 
-                    # 📉 RSI низкий
+                    # 📉 Только RSI < 40
                     if rsi < 40:
                         try:
                             bot.send_message(chat_id=CHAT_ID, text=f'📉 RSI низкий: {symbol} ({tf})\nRSI = {rsi:.2f}')
                         except Exception as e:
                             print(f"❌ Ошибка при отправке RSI < 40: {e}")
 
-                    # 📈 RSI высокий
+                    # 📈 Только RSI > 60
                     if rsi > 60:
                         try:
                             bot.send_message(chat_id=CHAT_ID, text=f'📈 RSI высокий: {symbol} ({tf})\nRSI = {rsi:.2f}')
                         except Exception as e:
                             print(f"❌ Ошибка при отправке RSI > 60: {e}")
 
-                    # ✅ Сильный BUY сигнал (RSI + паттерн)
+                    # ✅ Сильный BUY сигнал
                     if is_bullish_engulfing(df) and rsi < 40:
                         try:
                             bot.send_message(
@@ -124,9 +128,9 @@ def check_signals():
                                 text=f'✅ Сильный BUY сигнал: {symbol} ({tf})\nRSI = {rsi:.2f}\nПаттерн: бычье поглощение'
                             )
                         except Exception as e:
-                            print(f"❌ Ошибка при отправке сильного BUY: {e}")
+                            print(f"❌ Ошибка при отправке сильного BUY сигнала: {e}")
 
-                    # ✅ Сильный SELL сигнал (RSI + паттерн)
+                    # ✅ Сильный SELL сигнал
                     elif is_bearish_engulfing(df) and rsi > 60:
                         try:
                             bot.send_message(
@@ -134,16 +138,16 @@ def check_signals():
                                 text=f'✅ Сильный SELL сигнал: {symbol} ({tf})\nRSI = {rsi:.2f}\nПаттерн: медвежье поглощение'
                             )
                         except Exception as e:
-                            print(f"❌ Ошибка при отправке сильного SELL: {e}")
+                            print(f"❌ Ошибка при отправке сильного SELL сигнала: {e}")
 
                 except Exception as e:
                     print(f"❌ Ошибка при анализе {symbol} {tf}: {e}")
 
-        time.sleep(300)  # 🔁 Каждые 5 минут
+        time.sleep(300)  # ⏱️ Пауза 5 минут
 
-# ▶️ Запуск анализа в фоне
+# ▶️ Запуск в фоне
 threading.Thread(target=check_signals, daemon=True).start()
 
-# 🚀 Flask для Render
+# 🚀 Flask-сервер для Render
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
