@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 TOKEN = '8127035277:AAGTYZB_0IfIiSCnjL4bUD0KeOIerSWg-eg'
-CHAT_ID = '6715517491'
+CHAT_ID = '443841357'
 bot = Bot(token=TOKEN)
 
 COINS = [
