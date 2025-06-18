@@ -31,23 +31,27 @@ def home():
     return '✅ Scalping bot is running!'
 
 def get_klines(symbol, interval, limit=100):
-    # Bybit: 1m=1, 5m=5, 15m=15, 1h=60, 4h=240
     interval_map = {'1m': '1', '5m': '5', '15m': '15', '1h': '60', '4h': '240'}
     bybit_interval = interval_map[interval]
     url = f"https://api.bybit.com/v5/market/kline?category=linear&symbol={symbol}&interval={bybit_interval}&limit={limit}"
     response = requests.get(url)
-    data = response.json()
+    try:
+        data = response.json()
+    except Exception as e:
+        print(f"❌ Ошибка JSON для {symbol} {interval}: {e}")
+        print(f"Сырой ответ: {response.text}")
+        return pd.DataFrame()  # Возвращаем пустой DataFrame, чтобы код не падал
     print(f"Ответ Bybit для {symbol} {interval}: {data}")
     klines = data.get('result', {}).get('list', [])
     if not klines:
-        return pd.DataFrame()  # Вернуть пустой DataFrame, если нет данных
-    # Bybit columns: [start, open, high, low, close, volume, turnover]
+        return pd.DataFrame()
     df = pd.DataFrame(klines, columns=['time', 'o', 'h', 'l', 'c', 'v', 'q'])
     df['c'] = df['c'].astype(float)
     df['h'] = df['h'].astype(float)
     df['l'] = df['l'].astype(float)
     df['o'] = df['o'].astype(float)
     return df
+
 
 def calculate_rsi(df, period=14):
     delta = df['c'].diff()
