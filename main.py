@@ -18,7 +18,7 @@ COINS = [
     'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'PEPEUSDT',
     'TRUMPUSDT', 'WIFUSDT', 'DOGEUSDT', 'FLOKIUSDT', 'BONKUSDT'
 ]
-TIMEFRAMES = ['1m', '5m', '15m']
+TIMEFRAMES = ['1m', '5m', '15m', '1h', '4h']
 
 # Счетчики для статистики
 strong_signals = 0
@@ -31,14 +31,18 @@ def home():
     return '✅ Scalping bot is running!'
 
 def get_klines(symbol, interval, limit=100):
-    url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
+    # Bybit: 1m=1, 5m=5, 15m=15, 1h=60, 4h=240
+    interval_map = {'1m': '1', '5m': '5', '15m': '15', '1h': '60', '4h': '240'}
+    bybit_interval = interval_map[interval]
+    url = f"https://api.bybit.com/v5/market/kline?category=linear&symbol={symbol}&interval={bybit_interval}&limit={limit}"
     response = requests.get(url)
     data = response.json()
-    print(f"Ответ Binance для {symbol} {interval}: {data}")
-    df = pd.DataFrame(data, columns=[
-        'time','o','h','l','c','v','x','q','n',
-        'taker_base_vol','taker_quote_vol','ignore'
-    ])
+    print(f"Ответ Bybit для {symbol} {interval}: {data}")
+    klines = data.get('result', {}).get('list', [])
+    if not klines:
+        return pd.DataFrame()  # Вернуть пустой DataFrame, если нет данных
+    # Bybit columns: [start, open, high, low, close, volume, turnover]
+    df = pd.DataFrame(klines, columns=['time', 'o', 'h', 'l', 'c', 'v', 'q'])
     df['c'] = df['c'].astype(float)
     df['h'] = df['h'].astype(float)
     df['l'] = df['l'].astype(float)
