@@ -34,6 +34,7 @@ def get_klines(symbol, interval, limit=100):
     url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
     response = requests.get(url)
     data = response.json()
+    print(f"Ответ Binance для {symbol} {interval}: {data}")
     df = pd.DataFrame(data, columns=[
         'time','o','h','l','c','v','x','q','n',
         'taker_base_vol','taker_quote_vol','ignore'
